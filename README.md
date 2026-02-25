@@ -7,8 +7,7 @@
 
 Built with [Textual](https://textual.textualize.io/), it combines a modern TUI experience with the flexibility of Hydra's configuration system.
 
-
-![Hydra Viewer Main Interface](docs/images/screenshot_main_tui.svg)
+![Hydra Viewer Main Interface](https://raw.githubusercontent.com/mz-wang/hydra-viewer/master/docs/images/screenshot_main_tui.svg)
 
 ---
 
