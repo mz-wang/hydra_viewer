@@ -1,0 +1,104 @@
+# .github/workflows/ci.yml
+#
+# CI 流水线：代码检查 + 自动化测试
+#
+# 触发条件：
+#   - 向 main/master 分支推送代码
+#   - 向 main/master 分支提交 Pull Request
+#
+# 两个独立的 Job：
+#   1. lint   → 运行 Ruff 代码检查（快，约 30 秒）
+#   2. test   → 在多个 Python 版本上运行 Pytest（较慢，约 2-3 分钟）
+#
+# 为什么分开两个 Job？
+#   → lint 失败时可以快速知道，不必等待测试跑完。
+#   → 两个 Job 并行执行，整体更快。
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# 防止同一分支上的旧流水线浪费资源
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # Job 1: 代码质量检查（Lint）
+  # ============================================================================
+  lint:
+    name: Lint (Ruff)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"  # Lint 只需要跑一次，用最新版本
+
+      # 缓存 pip 依赖：第一次运行后，后续可以在 5 秒内完成安装
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: lint-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff lint
+        run: ruff check .
+
+      - name: Run Ruff format check
+        run: ruff format --check .
+
+  # ============================================================================
+  # Job 2: 单元测试（多 Python 版本矩阵）
+  # ============================================================================
+  # note: no tests yet, so commented out for now.
+  # test:
+  #   name: Test (Python ${{ matrix.python-version }})
+  #   runs-on: ubuntu-latest
+
+  #   # matrix 会将这个 Job 展开成多个并行任务
+  #   # 替换 <TEST_PYTHONS> 例: ["3.10", "3.11", "3.12"]
+  #   strategy:
+  #     fail-fast: false  # 一个版本失败时，不立即停止其他版本
+  #     matrix:
+  #       python-version: ["3.10", "3.11", "3.12"]
+
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+
+  #     - name: Set up Python ${{ matrix.python-version }}
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: ${{ matrix.python-version }}
+  #         cache: "pip"  # 自动缓存 pip 依赖
+
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -e ".[dev]"  # 安装项目本身及开发依赖
+
+  #     - name: Run tests with coverage
+  #       run: |
+  #         pytest
+
+  #     # 上传覆盖率报告（可选，供 Codecov 等服务读取）
+  #     # 如果不需要可以删掉这个 step
+  #     - name: Upload coverage report
+  #       if: matrix.python-version == '3.12'  # 只上传一次（用最新版本）
+  #       uses: codecov/codecov-action@v4
+  #       with:
+  #         files: ./coverage.xml
+  #         fail_ci_if_error: false  # 上传失败不影响 CI 结果

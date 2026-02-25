@@ -1,0 +1,59 @@
+# .github/dependabot.yml
+#
+# Dependabot：GitHub 的自动依赖更新机器人
+#
+# 作用：
+#   - 每周自动扫描你项目中的依赖是否有新版本或安全漏洞
+#   - 自动创建 Pull Request 来更新这些依赖
+#   - 你只需要审查并合并 PR，无需手动检查
+#
+# 使用方法：
+#   1. 将本文件放到 .github/dependabot.yml
+#   2. Push 到 GitHub 后自动生效，无需额外设置
+#
+# 更多配置说明：
+#   https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+
+updates:
+  # ==========================================================================
+  # [1] GitHub Actions 依赖更新
+  #     自动更新 .github/workflows/*.yml 中使用的 Action 版本
+  #     例如：actions/checkout@v3 → actions/checkout@v4
+  # ==========================================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"   # 每周一检查
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"  # 替换为你的时区
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # ==========================================================================
+  # [2] Python 依赖更新
+  #     自动扫描 pyproject.toml / requirements.txt 中的依赖
+  # ==========================================================================
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    # 限制同时打开的 PR 数量，防止被大量 PR 淹没
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    # 将同一天的多个小版本更新合并为一个 PR（减少噪音）
+    groups:
+      dev-dependencies:
+        patterns:
+          - "ruff*"
+          - "pytest*"
+          - "pre-commit*"
+          - "commitizen*"

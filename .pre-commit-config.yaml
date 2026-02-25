@@ -1,0 +1,77 @@
+# .pre-commit-config.yaml
+#
+# Usage:
+#   1. Install pre-commit: pip install pre-commit
+#   2. Initialize hooks: pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+#   3. (Optional) Run once on all existing files: pre-commit run --all-files
+#
+# The following hooks will be executed automatically in order with each git commit.
+# If any hook fails, the commit will be aborted and you need to fix and re-commit.
+
+repos:
+  # ===========================================================================
+  # [1] Basic file hygiene checks
+  #     Common hook collection maintained by pre-commit official
+  # ===========================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace      # Remove trailing whitespace
+      - id: end-of-file-fixer        # Ensure files end with a newline
+      - id: check-yaml               # Check YAML file syntax
+      - id: check-toml               # Check TOML file syntax (pyproject.toml, etc.)
+      - id: check-added-large-files  # Prevent accidental commit of large files (default >500KB)
+        args: ["--maxkb=1000"]       # Adjust threshold as needed
+      - id: check-merge-conflict     # Check for leftover <<<< merge conflict markers
+      - id: debug-statements         # Check for forgotten import pdb; pdb.set_trace()
+
+  # ===========================================================================
+  # [2] Copyright header check
+  #     Ensure all Python files have License statement at the beginning
+  #
+  #     Two modes (choose one):
+  #       Auto-write mode: args: ["-v", "-c", "<AUTHOR_NAME>", ...]
+  #       Check-only mode: args: ["-check", "-v", "-c", "<AUTHOR_NAME>", ...]
+  #
+  #     ★ Recommended: Use "check-only" for team collaboration, "auto-write" for personal projects
+  # ===========================================================================
+  - repo: https://github.com/google/addlicense
+    rev: v1.2.0
+    hooks:
+      - id: addlicense
+        # Replace <AUTHOR_NAME>, <YEAR>, <LICENSE_TYPE>
+        # <LICENSE_TYPE> options: apache, mit, gpl, bsd, mpl
+        args: ["-check", "-v", "-c", "Mengzhao Wang", "-y", "2026", "-l", "MIT"]
+        types_or: [python]  # Check Python files only
+        exclude: "^(?!src/|tests/)" # Only check files in src/ and tests/ directories
+
+  # ===========================================================================
+  # [3] Code formatting and static analysis (Ruff)
+  #     Ruff integrates Black, Flake8, isort, and dozens of other tools
+  #     All rule configurations are in [tool.ruff] section of pyproject.toml
+  # ===========================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.0
+    hooks:
+      - id: ruff              # Lint: check code issues, --fix auto-fixes fixable issues
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format       # Format: format code style (equivalent to Black)
+
+  # ===========================================================================
+  # [4] Commit message compliance check (Commitizen)
+  #     Ensure commit messages follow Conventional Commits format:
+  #       feat: new feature
+  #       fix: bug fix
+  #       docs: documentation update
+  #       refactor: refactoring (no functional change)
+  #       test: test-related
+  #       chore: build/toolchain related
+  #
+  #     Full specification: https://www.conventionalcommits.org/
+  # ===========================================================================
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.11.0
+    hooks:
+      - id: commitizen        # Check commit message format at commit-msg stage
+      - id: commitizen-branch # Check branch naming convention at pre-push stage
+        stages: [pre-push]
