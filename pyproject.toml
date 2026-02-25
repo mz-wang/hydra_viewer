@@ -26,7 +26,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hydra-viewer"
-version = "0.2.0"
+version = "0.2.1"
 description = "A TUI for Hydra configuration management"
 readme = "README.md"
 authors = [
@@ -146,7 +146,7 @@ indent-style = "space"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.2.0"
+version = "0.2.1"
 tag_format = "v$version"
 version_scheme = "pep440"
 update_changelog_on_bump = true
