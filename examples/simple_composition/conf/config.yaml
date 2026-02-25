@@ -1,0 +1,10 @@
+defaults:
+  - db: mysql
+  - ui: full
+  - schema: school
+
+hydra:
+  sweeper:
+    params:
+      db: mysql,postgresql
+      schema: warehouse,support,school
