@@ -63,7 +63,7 @@ jobs:
           fetch-depth: 0  # 获取完整 Git 历史（Commitizen 生成 Changelog 时需要）
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.x"  # 使用最新稳定版 Python
 
