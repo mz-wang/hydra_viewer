@@ -78,7 +78,7 @@ jobs:
       # 将 dist/ 目录中的构建产物传递给后续 Job
       # （不同 Job 之间不共享文件系统，必须通过 artifact 传递）
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
