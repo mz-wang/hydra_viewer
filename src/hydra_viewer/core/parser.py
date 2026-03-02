@@ -36,6 +36,7 @@ class ConfigModule:
     path: Path | None
     resolved: bool
     is_group: bool = False  # If it's a config group but specific item not selected? Or just a module.
+    display_name: str | None = None  # The short name to show in UI (e.g. group name)
 
     def __str__(self) -> str:
         return f"{self.group}={self.name}"
@@ -48,7 +49,7 @@ class HydraConfigParser:
 
     def _find_main_config(self) -> Path | None:
         # Typically config.yaml, or a file with defaults list
-        candidates = list(self.config_dir.glob("*.yaml"))
+        candidates = list(self.config_dir.glob("*.yaml")) + list(self.config_dir.glob("*.yml"))
         for cand in candidates:
             # simple heuristic: check if it has defaults
             try:
@@ -82,8 +83,29 @@ class HydraConfigParser:
             if isinstance(item, str):
                 if item == "_self_":
                     continue
-                # item like "db/mysql" is group=db, name=mysql
-                if "/" in item:
+
+                # Handle @ syntax in string items: e.g. data/sample/default@sample
+                if "@" in item:
+                    # Hydra @ syntax: path/to/config@package[:override_pkg]
+                    parts = item.split("@", 1)
+                    file_part = parts[0]  # e.g. "data/sample/default"
+                    package_part = parts[1]
+
+                    # package_part might have :dest (package override target), strip it
+                    if ":" in package_part:
+                        package, _ = package_part.split(":", 1)
+                    else:
+                        package = package_part
+
+                    # file_part is full relative path: group_dir/config_name
+                    if "/" in file_part:
+                        group, name = file_part.rsplit("/", 1)  # group="data/sample", name="default"
+                    else:
+                        group, name = "root", file_part
+
+                    self._add_module(modules, group, name, display_name=package)
+                elif "/" in item:
+                    # item like "db/mysql" is group=db, name=mysql
                     group, name = item.rsplit("/", 1)
                     self._add_module(modules, group, name)
                 else:
@@ -95,22 +117,47 @@ class HydraConfigParser:
                     self._resolve_string_item(modules, item)
 
             elif isinstance(item, dict):
-                for group, name in item.items():
-                    if not isinstance(group, str):
+                for raw_group, name in item.items():
+                    if not isinstance(raw_group, str):
                         continue
 
-                    if isinstance(name, str):
-                        self._add_module(modules, group, name)
+                    # Strip "override " prefix from the key if present
+                    key = raw_group
+                    if key.startswith("override "):
+                        key = key[len("override ") :]
+
+                    if not isinstance(name, str):
+                        continue
+
+                    if "@" in key:
+                        # Most common real-world format: "data/sample@sample: sample2"
+                        # key = "data/sample@sample", name = "sample2"
+                        # Split into file_path and package alias
+                        file_path, package = key.split("@", 1)
+                        # file_path IS the directory; pass it directly as group
+                        self._add_module(modules, file_path, name, display_name=package)
+                    elif "@" in name:
+                        # Less common: value side carries @: "sampleconf: data/sample@_here_"
+                        file_part, _ = name.split("@", 1)
+                        if "/" in file_part:
+                            g, n = file_part.rsplit("/", 1)
+                        else:
+                            g, n = "root", file_part
+                        self._add_module(modules, g, n, display_name=key)
+                    else:
+                        # Standard: "sample: beads"  -> group=sample dir, name=beads
+                        self._add_module(modules, key, name)
                     # Handle list of names if valid in Hydra? (Usually one selection)
 
         return modules
 
     def _resolve_string_item(self, modules: list[ConfigModule], item: str) -> None:
         # Check if item corresponds to a file
-        p = self.config_dir / f"{item}.yaml"
-        if p.exists():
-            modules.append(ConfigModule(group="root", name=item, path=p, resolved=True))
-            return
+        for ext in [".yaml", ".yml"]:
+            p = self.config_dir / f"{item}{ext}"
+            if p.exists():
+                modules.append(ConfigModule(group="root", name=item, path=p, resolved=True))
+                return
 
         # Check if item is a directory (config group)
         # But if it's just 'db', we don't know which db is selected unless defaults list has it.
@@ -119,14 +166,27 @@ class HydraConfigParser:
         # If item is "some_config", it's likely a file.
         pass
 
-    def _add_module(self, modules: list[ConfigModule], group: str, name: str) -> None:
+    def _add_module(self, modules: list[ConfigModule], group: str, name: str, display_name: str | None = None) -> None:
         # Construct expected path
         # group can be nested "group/subgroup"
-        rel_path = f"{group}/{name}.yaml"
-        full_path = self.config_dir / rel_path
+        # Try both .yaml and .yml
+        full_path = None
+        resolved = False
 
-        resolved = full_path.exists()
-        modules.append(ConfigModule(group=group, name=name, path=full_path if resolved else None, resolved=resolved))
+        prefix = "" if group == "root" else f"{group}/"
+        for ext in [".yaml", ".yml"]:
+            p = self.config_dir / f"{prefix}{name}{ext}"
+            if p.exists():
+                full_path = p
+                resolved = True
+                break
+
+        if not resolved and group != "root":
+            full_path = self.config_dir / f"{group}/{name}.yaml"  # default to .yaml for display if not found
+
+        modules.append(
+            ConfigModule(group=group, name=name, path=full_path, resolved=resolved, display_name=display_name)
+        )
 
     # ------------------------------------------------------------------ #
     # Org-file management                                                  #

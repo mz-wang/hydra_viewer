@@ -42,6 +42,7 @@ from hydra_viewer.widgets.yaml_editor import YamlEditor
 
 
 class HydraViewer(App):
+    TITLE = "Hydra Viewer [dev]"
     CSS = """
     Screen {
         layout: vertical;

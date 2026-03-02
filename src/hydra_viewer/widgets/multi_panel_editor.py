@@ -105,9 +105,10 @@ class FilePane(Vertical):
             self.pane = pane
             super().__init__()
 
-    def __init__(self, path: Path, content: str, **kwargs):
+    def __init__(self, path: Path, content: str, display_name: str | None = None, **kwargs):
         super().__init__(**kwargs)
         self.file_path = path
+        self.display_name = display_name
         self._original_content = content
         self._content = content
 
@@ -129,7 +130,9 @@ class FilePane(Vertical):
 
     def _make_title(self, dirty: bool = False) -> str:
         # Request 5: Filename without suffix + relative path hint
-        name_no_ext = self.file_path.stem
+        # Refactored for user request: Use display_name (group name) if available
+        name_part = self.display_name or self.file_path.stem
+
         # Try to show tail path as context
         from pathlib import PureWindowsPath, WindowsPath
 
@@ -138,7 +141,7 @@ class FilePane(Vertical):
         else:
             slash_separator = "/"
         tail_path = f"...{slash_separator}{Path(*self.file_path.parts[-2:])}"
-        content = f"{name_no_ext} ({tail_path})"
+        content = f"{name_part} ({tail_path})"
 
         marker = " *" if dirty else ""
         return f" {content}{marker}"
@@ -299,7 +302,7 @@ class MultiPanelEditor(Vertical):
             except Exception as e:
                 content = f"# Error reading file: {e}"
 
-            pane = FilePane(m.path, content)  # no id= to prevent DuplicateIds on reload
+            pane = FilePane(m.path, content, display_name=m.display_name)  # Pass display_name (group)
             scroller.mount(pane)
             self._module_paths.append(m.path)
 
